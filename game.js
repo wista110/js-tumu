@@ -27,6 +27,7 @@ class TsumTsumGame {
         // アニメーション管理
         this.animatingTsums = []; // アニメーション中のツム
         this.animationDuration = 500; // アニメーション時間（ミリ秒）
+        this.isShuffleButtonAnimating = false; // シャッフルボタンアニメーション状態
         
         // ツムの色パターン（5種類）
         this.tsumColors = [
@@ -306,15 +307,11 @@ class TsumTsumGame {
         
         const hasMoves = this.checkForPossibleMoves();
         if (!hasMoves) {
-            console.log('手詰まり状態を検出：自動シャッフル提案');
-            
-            // 少し待ってからユーザーに提案
-            setTimeout(() => {
-                if (confirm('❌ 手詰まり状態です！\n\n消せるツムがありません。\n\n自動でシャッフルしますか？')) {
-                    this.shuffleGrid();
-                    alert('🔀 シャッフル完了！\n\n新しい配置でゲームを続けてください。');
-                }
-            }, 300);
+            console.log('手詰まり状態を検出：シャッフルボタンアニメーション開始');
+            this.startShuffleButtonAnimation();
+        } else {
+            // 消せるツムがある場合はアニメーション停止
+            this.stopShuffleButtonAnimation();
         }
     }
     
@@ -436,6 +433,7 @@ class TsumTsumGame {
         
         // アニメーション状態をリセット
         this.animatingTsums = [];
+        this.stopShuffleButtonAnimation();
         
         // グリッドを再初期化
         this.initializeGrid();
@@ -570,6 +568,35 @@ class TsumTsumGame {
           } else {
               console.log('シャッフル完了：消せるツムが確認できました');
           }
+          
+          // シャッフル実行後はアニメーション停止
+          this.stopShuffleButtonAnimation();
+      }
+      
+      // シャッフルボタンアニメーション開始
+      startShuffleButtonAnimation() {
+          if (this.isShuffleButtonAnimating) return;
+          
+          this.isShuffleButtonAnimating = true;
+          const shuffleBtn = document.getElementById('shuffleBtn');
+          
+          if (shuffleBtn) {
+              shuffleBtn.classList.add('shuffle-attention');
+              console.log('シャッフルボタンアニメーション開始');
+          }
+      }
+      
+      // シャッフルボタンアニメーション停止
+      stopShuffleButtonAnimation() {
+          if (!this.isShuffleButtonAnimating) return;
+          
+          this.isShuffleButtonAnimating = false;
+          const shuffleBtn = document.getElementById('shuffleBtn');
+          
+          if (shuffleBtn) {
+              shuffleBtn.classList.remove('shuffle-attention');
+              console.log('シャッフルボタンアニメーション停止');
+          }
       }
       
       // 必要に応じて再シャッフル（手詰まり回避）
@@ -608,19 +635,6 @@ function restartGame() {
     }
 }
 
-// グローバル関数：手詰まり検出テスト用
-function testDeadlockDetection() {
-    if (gameInstance) {
-        const hasMoves = gameInstance.checkForPossibleMoves();
-        
-        if (hasMoves) {
-            alert('✅ 消せるツムがあります！\n\n詳細はブラウザのConsole（F12）で確認できます。');
-        } else {
-            alert('❌ 手詰まり状態です！\n\n消せるツムがありません。\n\n「🔀 シャッフル」ボタンで盤面を変更できます。');
-        }
-    }
-}
-
 // グローバル関数：シャッフル用
 function shuffleGrid() {
     if (gameInstance && gameInstance.gameRunning) {
@@ -637,7 +651,10 @@ function shuffleGrid() {
         // シャッフル実行
         gameInstance.shuffleGrid();
         
-        alert('🔀 シャッフル完了！\n\n新しい配置でゲームを続けてください。');
+        // 短時間後にメッセージ表示（アニメーション停止後）
+        setTimeout(() => {
+            alert('🔀 シャッフル完了！\n\n新しい配置でゲームを続けてください。');
+        }, 100);
     } else {
         alert('⚠️ ゲームが実行中ではありません。');
     }

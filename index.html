@@ -42,6 +42,44 @@
         #time {
             color: #4ecdc4;
         }
+        
+        /* シャッフルボタンのアニメーション */
+        @keyframes shuffleAttention {
+            0% { 
+                transform: scale(1); 
+                opacity: 1;
+                box-shadow: 0 4px 8px rgba(155, 89, 182, 0.3);
+            }
+            25% { 
+                transform: scale(1.1); 
+                opacity: 0.8;
+                box-shadow: 0 6px 12px rgba(155, 89, 182, 0.5);
+            }
+            50% { 
+                transform: scale(1.15); 
+                opacity: 0.6;
+                box-shadow: 0 8px 16px rgba(155, 89, 182, 0.7);
+            }
+            75% { 
+                transform: scale(1.1); 
+                opacity: 0.8;
+                box-shadow: 0 6px 12px rgba(155, 89, 182, 0.5);
+            }
+            100% { 
+                transform: scale(1); 
+                opacity: 1;
+                box-shadow: 0 4px 8px rgba(155, 89, 182, 0.3);
+            }
+        }
+        
+        .shuffle-attention {
+            animation: shuffleAttention 1.5s ease-in-out infinite;
+        }
+        
+        .shuffle-attention:hover {
+            animation-play-state: paused;
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body>
@@ -67,26 +105,16 @@
             display: none;
         ">🔄 もう一度プレイ</button>
         
-        <button id="checkMovesBtn" onclick="testDeadlockDetection()" style="
-            padding: 12px 24px;
-            font-size: 16px;
-            font-weight: bold;
-            background-color: #f39c12;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        ">🔍 手詰まりチェック</button>
-        
         <button id="shuffleBtn" onclick="shuffleGrid()" style="
-            padding: 12px 24px;
-            font-size: 16px;
+            padding: 15px 30px;
+            font-size: 18px;
             font-weight: bold;
             background-color: #9b59b6;
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
+            transition: all 0.3s ease;
         ">🔀 シャッフル</button>
     </div>
     
