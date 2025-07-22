@@ -29,6 +29,12 @@ class TsumTsumGame {
         this.animationDuration = 500; // アニメーション時間（ミリ秒）
         this.isShuffleButtonAnimating = false; // シャッフルボタンアニメーション状態
         
+        // コンボシステム
+        this.combo = 0; // 現在のコンボ数
+        this.lastClearTime = 0; // 最後にツムを消した時間
+        this.comboTimeLimit = 1000; // コンボ継続の制限時間（1秒）
+        this.maxCombo = 0; // 最大コンボ数（ゲーム終了時の計算用）
+        
         // ツムの色パターン（5種類）
         this.tsumColors = [
             '#ff6b6b', // 赤
@@ -366,12 +372,113 @@ class TsumTsumGame {
         console.log(`${this.connectedTsums.length}個のツムのアニメーションを開始`);
     }
     
-    // スコア更新
+    // チェーン長に基づく得点計算
+    calculateChainScore(chainLength) {
+        if (chainLength < 3) return 0;
+        
+        // フィボナッチ的な得点テーブル（3チェーン以上）
+        const scoreTable = [
+            0,    // 0チェーン
+            0,    // 1チェーン  
+            0,    // 2チェーン
+            200,  // 3チェーン: 200点
+            300,  // 4チェーン: 200 + 300 = 500点
+            500,  // 5チェーン: 200 + 300 + 500 = 1000点
+            800,  // 6チェーン: 200 + 300 + 500 + 800 = 1800点
+            1300, // 7チェーン: フィボナッチ的増加 (500 + 800)
+            2100, // 8チェーン: (800 + 1300)
+            3400, // 9チェーン: (1300 + 2100)
+            5500, // 10チェーン: (2100 + 3400)
+            8900, // 11チェーン: (3400 + 5500)
+            14400 // 12チェーン: (5500 + 8900)
+        ];
+        
+        // テーブルにない長いチェーンは最後の2つの値の和で計算
+        if (chainLength >= scoreTable.length) {
+            const lastIndex = scoreTable.length - 1;
+            const increment = scoreTable[lastIndex] + scoreTable[lastIndex - 1];
+            return this.calculateTotalChainScore(chainLength, scoreTable) + 
+                   (increment * (chainLength - scoreTable.length + 1));
+        }
+        
+        return this.calculateTotalChainScore(chainLength, scoreTable);
+    }
+    
+    // チェーン全体の合計得点を計算
+    calculateTotalChainScore(chainLength, scoreTable) {
+        let totalScore = 0;
+        for (let i = 3; i <= chainLength && i < scoreTable.length; i++) {
+            totalScore += scoreTable[i];
+        }
+        return totalScore;
+    }
+    
+    // コンボ管理
+    updateCombo() {
+        const currentTime = Date.now();
+        
+        // 1秒以内に消去した場合はコンボ継続
+        if (this.lastClearTime > 0 && (currentTime - this.lastClearTime) <= this.comboTimeLimit) {
+            this.combo++;
+        } else {
+            // 新しいコンボ開始
+            this.combo = 1;
+        }
+        
+        // 最大コンボ更新
+        if (this.combo > this.maxCombo) {
+            this.maxCombo = this.combo;
+        }
+        
+        // 最後に消した時間を更新
+        this.lastClearTime = currentTime;
+        
+        // UI更新
+        document.getElementById('combo').textContent = this.combo;
+        
+        // コンボ達成メッセージ
+        if (this.combo >= 10) {
+            console.log(`🎉 INCREDIBLE ${this.combo} COMBO!!`);
+        } else if (this.combo >= 5) {
+            console.log(`🔥 SUPER ${this.combo} COMBO!`);
+        } else if (this.combo >= 3) {
+            console.log(`⚡ ${this.combo} COMBO!`);
+        }
+    }
+    
+    // スコア更新（改善版 + コンボ対応）
     updateScore() {
-        const points = this.connectedTsums.length * 100;
+        const chainLength = this.connectedTsums.length;
+        let points = this.calculateChainScore(chainLength);
+        
+        // コンボ更新
+        this.updateCombo();
+        
+        // コンボボーナス（2コンボ以上で1.1倍、以降0.05倍ずつ増加）
+        if (this.combo >= 2) {
+            const comboMultiplier = 1.0 + (this.combo - 1) * 0.05;
+            const bonusPoints = Math.floor(points * (comboMultiplier - 1.0));
+            points = Math.floor(points * comboMultiplier);
+            
+            if (bonusPoints > 0) {
+                console.log(`💫 ${this.combo}コンボボーナス: +${bonusPoints}点`);
+            }
+        }
+        
         this.score += points;
         document.getElementById('score').textContent = this.score;
-        console.log(`+${points}点！ 総スコア: ${this.score}`);
+        
+        // 詳細ログ表示
+        console.log(`${chainLength}チェーン: +${points}点！ 総スコア: ${this.score}`);
+        
+        // チェーン長に応じた特別メッセージ
+        if (chainLength >= 7) {
+            console.log(`🔥 AMAZING ${chainLength}チェーン！ +${points}点の大ボーナス！`);
+        } else if (chainLength >= 5) {
+            console.log(`⭐ GREAT ${chainLength}チェーン！ +${points}点！`);
+        } else if (chainLength >= 4) {
+            console.log(`✨ GOOD ${chainLength}チェーン！ +${points}点！`);
+        }
     }
     
     // タイマー開始
@@ -404,15 +511,31 @@ class TsumTsumGame {
         this.connectedTsums = [];
         this.isDragging = false;
         
+        // 最大コンボボーナススコア計算
+        const comboBonus = Math.floor(this.maxCombo * 50);
+        const finalScore = this.score + comboBonus;
+        
         // リスタートボタンを表示
         document.getElementById('restartBtn').style.display = 'block';
         
         // 終了メッセージを表示
         setTimeout(() => {
-            alert(`ゲーム終了！\n最終スコア: ${this.score}点\n\n「もう一度プレイ」ボタンでリスタートできます。`);
+            let message = `🎮 ゲーム終了！\n\n`;
+            message += `基本スコア: ${this.score}点\n`;
+            message += `最大コンボ: ${this.maxCombo}\n`;
+            if (comboBonus > 0) {
+                message += `コンボボーナス: +${comboBonus}点\n`;
+                message += `─────────────\n`;
+                message += `最終スコア: ${finalScore}点`;
+            } else {
+                message += `最終スコア: ${finalScore}点`;
+            }
+            message += `\n\n「もう一度プレイ」ボタンでリスタートできます。`;
+            
+            alert(message);
         }, 100);
         
-        console.log(`ゲーム終了 - 最終スコア: ${this.score}点`);
+        console.log(`ゲーム終了 - 基本スコア: ${this.score}点, 最大コンボ: ${this.maxCombo}, 最終スコア: ${finalScore}点`);
     }
     
     // ゲームリスタート
@@ -426,9 +549,15 @@ class TsumTsumGame {
         this.isDragging = false;
         this.connectedTsums = [];
         
+        // コンボシステムリセット
+        this.combo = 0;
+        this.lastClearTime = 0;
+        this.maxCombo = 0;
+        
         // UI更新
         document.getElementById('score').textContent = this.score;
         document.getElementById('time').textContent = this.timeLeft;
+        document.getElementById('combo').textContent = this.combo;
         document.getElementById('restartBtn').style.display = 'none';
         
         // アニメーション状態をリセット
@@ -651,10 +780,8 @@ function shuffleGrid() {
         // シャッフル実行
         gameInstance.shuffleGrid();
         
-        // 短時間後にメッセージ表示（アニメーション停止後）
-        setTimeout(() => {
-            alert('🔀 シャッフル完了！\n\n新しい配置でゲームを続けてください。');
-        }, 100);
+        // メッセージ表示なしでスムーズにゲーム継続
+        console.log('🔀 シャッフル完了 - ゲームを継続してください');
     } else {
         alert('⚠️ ゲームが実行中ではありません。');
     }
