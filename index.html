@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ツムツムゲーム</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #f0f8ff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        h1 {
+            color: #4a4a4a;
+            margin-bottom: 20px;
+        }
+        
+        #gameCanvas {
+            border: 3px solid #333;
+            border-radius: 10px;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        #gameInfo {
+            margin-top: 20px;
+            display: flex;
+            gap: 30px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        #score {
+            color: #ff6b6b;
+        }
+        
+        #time {
+            color: #4ecdc4;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 ツムツムゲーム 🎮</h1>
+    
+    <canvas id="gameCanvas" width="600" height="600"></canvas>
+    
+    <div id="gameInfo">
+        <div>スコア: <span id="score">0</span></div>
+        <div>時間: <span id="time">60</span>秒</div>
+    </div>
+    
+    <script src="game.js"></script>
+</body>
+</html> 
