@@ -291,6 +291,26 @@ class TsumTsumGame {
         return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
     }
     
+    // 隣接セルの座標を取得
+    getAdjacentCells(row, col) {
+        const adjacent = [];
+        const directions = [
+            [-1, 0], [1, 0], [0, -1], [0, 1] // 上、下、左、右
+        ];
+        
+        directions.forEach(([dr, dc]) => {
+            const newRow = row + dr;
+            const newCol = col + dc;
+            
+            if (newRow >= 0 && newRow < this.gridSize && 
+                newCol >= 0 && newCol < this.gridSize) {
+                adjacent.push({ row: newRow, col: newCol });
+            }
+        });
+        
+        return adjacent;
+    }
+    
     // すべての選択状態をクリア
     clearAllSelections() {
         for (let row = 0; row < this.gridSize; row++) {
@@ -419,12 +439,62 @@ class TsumTsumGame {
                 // アニメーション進行中：透明度を更新
                 this.grid[row][col].opacity = 1.0 - progress;
                 return true; // 配列に保持
-            }
-        });
-    }
-}
-
-// グローバル変数でゲームインスタンスを保持
+                        }
+         });
+     }
+     
+     // 手詰まり検出：消せるツムがあるかチェック
+     checkForPossibleMoves() {
+         console.log('手詰まり検出を開始...');
+         
+         for (let row = 0; row < this.gridSize; row++) {
+             for (let col = 0; col < this.gridSize; col++) {
+                 // アニメーション中のツムはスキップ
+                 if (this.grid[row][col].isAnimating) continue;
+                 
+                 // このセルから開始して3つ以上のチェーンが作れるかチェック
+                 if (this.canFormChain(row, col)) {
+                     console.log(`消せるチェーンが見つかりました: (${row}, ${col})から開始`);
+                     return true;
+                 }
+             }
+         }
+         
+         console.log('手詰まり状態：消せるツムがありません');
+         return false;
+     }
+     
+     // 指定位置から3つ以上のチェーンが作れるかチェック
+     canFormChain(startRow, startCol) {
+         const startColor = this.grid[startRow][startCol].color;
+         const visited = new Set();
+         const chain = [];
+         
+         // 深さ優先探索で同色の隣接ツムを探す
+         const dfs = (row, col) => {
+             const key = `${row},${col}`;
+             if (visited.has(key)) return;
+             
+             if (this.grid[row][col].color !== startColor) return;
+             if (this.grid[row][col].isAnimating) return;
+             
+             visited.add(key);
+             chain.push({ row, col });
+             
+             // 隣接セルを探索
+             this.getAdjacentCells(row, col).forEach(({ row: adjRow, col: adjCol }) => {
+                 dfs(adjRow, adjCol);
+             });
+         };
+         
+         dfs(startRow, startCol);
+         
+         // 3つ以上つながったらtrue
+         return chain.length >= 3;
+     }
+ }
+ 
+ // グローバル変数でゲームインスタンスを保持
 let gameInstance = null;
 
 // ページが読み込まれたらゲームを開始
@@ -442,5 +512,18 @@ window.addEventListener('load', () => {
 function restartGame() {
     if (gameInstance) {
         gameInstance.restart();
+    }
+}
+
+// グローバル関数：手詰まり検出テスト用
+function testDeadlockDetection() {
+    if (gameInstance) {
+        const hasMoves = gameInstance.checkForPossibleMoves();
+        
+        if (hasMoves) {
+            alert('✅ 消せるツムがあります！\n\n詳細はブラウザのConsole（F12）で確認できます。');
+        } else {
+            alert('❌ 手詰まり状態です！\n\n消せるツムがありません。\nシャッフルが必要です。');
+        }
     }
 } 

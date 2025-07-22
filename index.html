@@ -54,18 +54,30 @@
         <div>時間: <span id="time">60</span>秒</div>
     </div>
     
-    <button id="restartBtn" onclick="restartGame()" style="
-        margin-top: 20px;
-        padding: 15px 30px;
-        font-size: 18px;
-        font-weight: bold;
-        background-color: #4ecdc4;
-        color: white;
-        border: none;
-        border-radius: 10px;
-        cursor: pointer;
-        display: none;
-    ">🔄 もう一度プレイ</button>
+    <div id="gameButtons" style="margin-top: 20px; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
+        <button id="restartBtn" onclick="restartGame()" style="
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            background-color: #4ecdc4;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            display: none;
+        ">🔄 もう一度プレイ</button>
+        
+        <button id="checkMovesBtn" onclick="testDeadlockDetection()" style="
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #f39c12;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        ">🔍 手詰まりチェック</button>
+    </div>
     
     <script src="game.js"></script>
 </body>
