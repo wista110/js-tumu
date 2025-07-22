@@ -35,6 +35,10 @@ class TsumTsumGame {
         this.comboTimeLimit = 1000; // コンボ継続の制限時間（1秒）
         this.maxCombo = 0; // 最大コンボ数（ゲーム終了時の計算用）
         
+        // 落下システム
+        this.tsumsClearedPositions = []; // 消去されたツムの位置記録
+        this.fallingProcessed = false; // 落下処理完了フラグ
+        
         // ツムの色パターン（5種類）
         this.tsumColors = [
             '#ff6b6b', // 赤
@@ -357,8 +361,12 @@ class TsumTsumGame {
         }
     }
     
-    // ツムを消去（アニメーション付き）
+    // ツムを消去（アニメーション付き + 落下準備）
     removeTsums() {
+        // 消去予定のツムの位置を記録
+        this.tsumsClearedPositions = [...this.connectedTsums];
+        this.fallingProcessed = false; // 落下処理フラグをリセット
+        
         // アニメーション開始
         this.connectedTsums.forEach(({ row, col }) => {
             const tsum = this.grid[row][col];
@@ -554,6 +562,10 @@ class TsumTsumGame {
         this.lastClearTime = 0;
         this.maxCombo = 0;
         
+        // 落下システムリセット
+        this.tsumsClearedPositions = [];
+        this.fallingProcessed = false;
+        
         // UI更新
         document.getElementById('score').textContent = this.score;
         document.getElementById('time').textContent = this.timeLeft;
@@ -590,11 +602,19 @@ class TsumTsumGame {
             const progress = elapsed / this.animationDuration;
             
             if (progress >= 1.0) {
-                // アニメーション完了：新しい色に変更
+                // アニメーション完了：落下システム開始
                 const tsum = this.grid[row][col];
-                tsum.color = this.tsumColors[Math.floor(Math.random() * this.tsumColors.length)];
                 tsum.opacity = 1.0;
                 tsum.isAnimating = false;
+                
+                // 落下処理を実行（すべてのアニメーション完了時に1回だけ）
+                if (this.animatingTsums.length === 1 && !this.fallingProcessed) {
+                    this.fallingProcessed = true;
+                    setTimeout(() => {
+                        this.processFalling();
+                    }, 50);
+                }
+                
                 return false; // 配列から削除
             } else {
                 // アニメーション進行中：透明度を更新
@@ -740,7 +760,67 @@ class TsumTsumGame {
           if (!this.checkForPossibleMoves()) {
               this.reshuffleIfNeeded(remainingAttempts - 1);
           }
-      }
+             }
+       
+       // 落下システム：段階1（基本ロジック）
+       processFalling() {
+           console.log('🍃 落下システム開始');
+           
+           // 各列ごとに落下処理
+           for (let col = 0; col < this.gridSize; col++) {
+               this.processColumnFalling(col);
+           }
+           
+           console.log('🍃 落下システム完了');
+       }
+       
+       // 指定列の落下処理
+       processColumnFalling(col) {
+           // 下から上へスキャンして、空白を見つけて詰める
+           let writeIndex = this.gridSize - 1; // 書き込み位置（下から）
+           
+           // 下から上へ移動
+           for (let readIndex = this.gridSize - 1; readIndex >= 0; readIndex--) {
+               const tsum = this.grid[readIndex][col];
+               
+               // 消去されていない（透明でない）ツムを下に詰める
+               if (tsum.opacity > 0 && !tsum.isAnimating) {
+                   if (readIndex !== writeIndex) {
+                       // ツムを下に移動
+                       this.grid[writeIndex][col] = { ...tsum };
+                       this.grid[readIndex][col] = this.createEmptyTsum();
+                   }
+                   writeIndex--;
+               }
+           }
+           
+           // 上部の空いた場所に新しいツムを生成
+           for (let row = 0; row <= writeIndex; row++) {
+               this.grid[row][col] = this.createNewTsum();
+           }
+           
+           console.log(`列${col}: ${writeIndex + 1}個の新しいツムを生成`);
+       }
+       
+       // 新しいツムを作成
+       createNewTsum() {
+           return {
+               color: this.tsumColors[Math.floor(Math.random() * this.tsumColors.length)],
+               selected: false,
+               opacity: 1.0,
+               isAnimating: false
+           };
+       }
+       
+       // 空のツム（一時的）を作成
+       createEmptyTsum() {
+           return {
+               color: '#000000',
+               selected: false,
+               opacity: 0.0,
+               isAnimating: false
+           };
+       }
  }
  
  // グローバル変数でゲームインスタンスを保持
