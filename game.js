@@ -277,11 +277,45 @@ class TsumTsumGame {
             console.log(`${this.connectedTsums.length}個のツムを消去！`);
             this.removeTsums();
             this.updateScore();
+            
+            // 消去後、少し待ってから手詰まりチェック
+            setTimeout(() => {
+                this.checkDeadlockAfterMove();
+            }, this.animationDuration + 100);
         }
         
         // 選択状態をクリア
         this.clearAllSelections();
         this.connectedTsums = [];
+    }
+    
+    // 移動後の手詰まりチェック
+    checkDeadlockAfterMove() {
+        // アニメーション中は延期
+        if (this.animatingTsums.length > 0) {
+            setTimeout(() => {
+                this.checkDeadlockAfterMove();
+            }, 200);
+            return;
+        }
+        
+        // ゲームが終了していたら何もしない
+        if (!this.gameRunning) {
+            return;
+        }
+        
+        const hasMoves = this.checkForPossibleMoves();
+        if (!hasMoves) {
+            console.log('手詰まり状態を検出：自動シャッフル提案');
+            
+            // 少し待ってからユーザーに提案
+            setTimeout(() => {
+                if (confirm('❌ 手詰まり状態です！\n\n消せるツムがありません。\n\n自動でシャッフルしますか？')) {
+                    this.shuffleGrid();
+                    alert('🔀 シャッフル完了！\n\n新しい配置でゲームを続けてください。');
+                }
+            }, 300);
+        }
     }
     
     // 隣接判定
@@ -489,9 +523,68 @@ class TsumTsumGame {
          
          dfs(startRow, startCol);
          
-         // 3つ以上つながったらtrue
-         return chain.length >= 3;
-     }
+                   // 3つ以上つながったらtrue
+          return chain.length >= 3;
+      }
+      
+      // シャッフル機能：グリッドの色をランダムに再配置
+      shuffleGrid() {
+          console.log('グリッドシャッフルを開始...');
+          
+          // 現在の色を全て取得（アニメーション中でないもののみ）
+          const colors = [];
+          for (let row = 0; row < this.gridSize; row++) {
+              for (let col = 0; col < this.gridSize; col++) {
+                  if (!this.grid[row][col].isAnimating) {
+                      colors.push(this.grid[row][col].color);
+                  }
+              }
+          }
+          
+          // Fisher-Yates アルゴリズムでシャッフル
+          for (let i = colors.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [colors[i], colors[j]] = [colors[j], colors[i]];
+          }
+          
+          // シャッフルした色を再配置
+          let colorIndex = 0;
+          for (let row = 0; row < this.gridSize; row++) {
+              for (let col = 0; col < this.gridSize; col++) {
+                  if (!this.grid[row][col].isAnimating) {
+                      this.grid[row][col].color = colors[colorIndex];
+                      this.grid[row][col].selected = false; // 選択状態もリセット
+                      colorIndex++;
+                  }
+              }
+          }
+          
+          console.log(`${colorIndex}個のツムをシャッフルしました`);
+          
+          // シャッフル後に消せるツムがあるかチェック
+          const hasMoves = this.checkForPossibleMoves();
+          if (!hasMoves) {
+              console.log('シャッフル後も手詰まり状態のため、再シャッフル実行');
+              // 最大3回まで再試行
+              this.reshuffleIfNeeded(2);
+          } else {
+              console.log('シャッフル完了：消せるツムが確認できました');
+          }
+      }
+      
+      // 必要に応じて再シャッフル（手詰まり回避）
+      reshuffleIfNeeded(remainingAttempts) {
+          if (remainingAttempts <= 0) {
+              console.log('再シャッフル試行回数の上限に達しました');
+              return;
+          }
+          
+          this.shuffleGrid();
+          
+          if (!this.checkForPossibleMoves()) {
+              this.reshuffleIfNeeded(remainingAttempts - 1);
+          }
+      }
  }
  
  // グローバル変数でゲームインスタンスを保持
@@ -523,7 +616,29 @@ function testDeadlockDetection() {
         if (hasMoves) {
             alert('✅ 消せるツムがあります！\n\n詳細はブラウザのConsole（F12）で確認できます。');
         } else {
-            alert('❌ 手詰まり状態です！\n\n消せるツムがありません。\nシャッフルが必要です。');
+            alert('❌ 手詰まり状態です！\n\n消せるツムがありません。\n\n「🔀 シャッフル」ボタンで盤面を変更できます。');
         }
+    }
+}
+
+// グローバル関数：シャッフル用
+function shuffleGrid() {
+    if (gameInstance && gameInstance.gameRunning) {
+        // ドラッグ中やアニメーション中の場合は実行しない
+        if (gameInstance.isDragging || gameInstance.animatingTsums.length > 0) {
+            alert('⏳ アニメーション中です。\n\n少し待ってからシャッフルしてください。');
+            return;
+        }
+        
+        // 選択状態をクリア
+        gameInstance.clearAllSelections();
+        gameInstance.connectedTsums = [];
+        
+        // シャッフル実行
+        gameInstance.shuffleGrid();
+        
+        alert('🔀 シャッフル完了！\n\n新しい配置でゲームを続けてください。');
+    } else {
+        alert('⚠️ ゲームが実行中ではありません。');
     }
 } 
