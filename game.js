@@ -24,6 +24,10 @@ class TsumTsumGame {
         this.connectedTsums = []; // つながっているツムの配列
         this.currentMousePos = { x: 0, y: 0 };
         
+        // アニメーション管理
+        this.animatingTsums = []; // アニメーション中のツム
+        this.animationDuration = 500; // アニメーション時間（ミリ秒）
+        
         // ツムの色パターン（5種類）
         this.tsumColors = [
             '#ff6b6b', // 赤
@@ -55,7 +59,9 @@ class TsumTsumGame {
             for (let col = 0; col < this.gridSize; col++) {
                 this.grid[row][col] = {
                     color: this.tsumColors[Math.floor(Math.random() * this.tsumColors.length)],
-                    selected: false
+                    selected: false,
+                    opacity: 1.0,
+                    isAnimating: false
                 };
             }
         }
@@ -118,6 +124,9 @@ class TsumTsumGame {
         
         const tsum = this.grid[row][col];
         
+        // 透明度を設定
+        this.ctx.globalAlpha = tsum.opacity;
+        
         // ツムの円を描画
         this.ctx.beginPath();
         this.ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -133,6 +142,9 @@ class TsumTsumGame {
         
         // ツムに顔を描画（かわいらしく）
         this.drawTsumFace(x, y, radius * 0.6);
+        
+        // 透明度をリセット
+        this.ctx.globalAlpha = 1.0;
     }
     
     // ツムの顔を描画
@@ -288,12 +300,19 @@ class TsumTsumGame {
         }
     }
     
-    // ツムを消去
+    // ツムを消去（アニメーション付き）
     removeTsums() {
+        // アニメーション開始
         this.connectedTsums.forEach(({ row, col }) => {
-            // 新しいランダムな色に変更（後で落下機能を追加）
-            this.grid[row][col].color = this.tsumColors[Math.floor(Math.random() * this.tsumColors.length)];
+            const tsum = this.grid[row][col];
+            tsum.isAnimating = true;
+            tsum.animationStartTime = Date.now();
+            
+            // アニメーション中のツムリストに追加
+            this.animatingTsums.push({ row, col, startTime: Date.now() });
         });
+        
+        console.log(`${this.connectedTsums.length}個のツムのアニメーションを開始`);
     }
     
     // スコア更新
@@ -361,6 +380,9 @@ class TsumTsumGame {
         document.getElementById('time').textContent = this.timeLeft;
         document.getElementById('restartBtn').style.display = 'none';
         
+        // アニメーション状態をリセット
+        this.animatingTsums = [];
+        
         // グリッドを再初期化
         this.initializeGrid();
         
@@ -372,8 +394,33 @@ class TsumTsumGame {
     
     // ゲームループ
     gameLoop() {
+        this.updateAnimations();
         this.draw();
         requestAnimationFrame(() => this.gameLoop());
+    }
+    
+    // アニメーション更新
+    updateAnimations() {
+        const currentTime = Date.now();
+        
+        // アニメーション中のツムを更新
+        this.animatingTsums = this.animatingTsums.filter(({ row, col, startTime }) => {
+            const elapsed = currentTime - startTime;
+            const progress = elapsed / this.animationDuration;
+            
+            if (progress >= 1.0) {
+                // アニメーション完了：新しい色に変更
+                const tsum = this.grid[row][col];
+                tsum.color = this.tsumColors[Math.floor(Math.random() * this.tsumColors.length)];
+                tsum.opacity = 1.0;
+                tsum.isAnimating = false;
+                return false; // 配列から削除
+            } else {
+                // アニメーション進行中：透明度を更新
+                this.grid[row][col].opacity = 1.0 - progress;
+                return true; // 配列に保持
+            }
+        });
     }
 }
 
