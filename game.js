@@ -765,6 +765,12 @@ class TsumTsumGame {
        // 落下システム：段階1（基本ロジック）
        processFalling() {
            console.log('🍃 落下システム開始');
+           console.log('消去された位置:', this.tsumsClearedPositions);
+           
+           // 消去されたツムを実際に削除してマーク
+           this.tsumsClearedPositions.forEach(({ row, col }) => {
+               this.grid[row][col] = { ...this.createEmptyTsum(), isEmpty: true };
+           });
            
            // 各列ごとに落下処理
            for (let col = 0; col < this.gridSize; col++) {
@@ -776,30 +782,41 @@ class TsumTsumGame {
        
        // 指定列の落下処理
        processColumnFalling(col) {
-           // 下から上へスキャンして、空白を見つけて詰める
-           let writeIndex = this.gridSize - 1; // 書き込み位置（下から）
+           // この列に消去されたツムがあるかチェック
+           const clearedInThisColumn = this.tsumsClearedPositions.filter(pos => pos.col === col);
+           if (clearedInThisColumn.length === 0) {
+               console.log(`列${col}: 消去されたツムなし`);
+               return; // この列には消去されたツムがないのでスキップ
+           }
            
-           // 下から上へ移動
-           for (let readIndex = this.gridSize - 1; readIndex >= 0; readIndex--) {
-               const tsum = this.grid[readIndex][col];
-               
-               // 消去されていない（透明でない）ツムを下に詰める
-               if (tsum.opacity > 0 && !tsum.isAnimating) {
-                   if (readIndex !== writeIndex) {
-                       // ツムを下に移動
-                       this.grid[writeIndex][col] = { ...tsum };
-                       this.grid[readIndex][col] = this.createEmptyTsum();
-                   }
-                   writeIndex--;
+           // 残存するツムを下から収集
+           const remainingTsums = [];
+           for (let row = this.gridSize - 1; row >= 0; row--) {
+               const tsum = this.grid[row][col];
+               if (!tsum.isEmpty && tsum.opacity > 0) {
+                   remainingTsums.push({ ...tsum });
                }
            }
            
-           // 上部の空いた場所に新しいツムを生成
-           for (let row = 0; row <= writeIndex; row++) {
+           // 列全体をクリア
+           for (let row = 0; row < this.gridSize; row++) {
+               this.grid[row][col] = this.createEmptyTsum();
+           }
+           
+           // 残存ツムを下から配置
+           let targetRow = this.gridSize - 1;
+           for (let i = 0; i < remainingTsums.length; i++) {
+               this.grid[targetRow][col] = remainingTsums[i];
+               targetRow--;
+           }
+           
+           // 上部に新しいツムを生成
+           const newTsumsCount = this.gridSize - remainingTsums.length;
+           for (let row = 0; row < newTsumsCount; row++) {
                this.grid[row][col] = this.createNewTsum();
            }
            
-           console.log(`列${col}: ${writeIndex + 1}個の新しいツムを生成`);
+           console.log(`列${col}: ${remainingTsums.length}個保持, ${newTsumsCount}個新規生成`);
        }
        
        // 新しいツムを作成
@@ -818,7 +835,8 @@ class TsumTsumGame {
                color: '#000000',
                selected: false,
                opacity: 0.0,
-               isAnimating: false
+               isAnimating: false,
+               isEmpty: true
            };
        }
  }
