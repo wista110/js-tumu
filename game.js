@@ -1,7 +1,7 @@
 // ツムツムゲームクラス
 class TsumTsumGame {
     constructor() {
-        console.log('TsumTsumGameクラスの初期化を開始...');
+        console.log('🔧 TsumTsumGameクラスの初期化を開始... [デバッグ版]');
         this.canvas = document.getElementById('gameCanvas');
         
         if (!this.canvas) {
@@ -58,7 +58,7 @@ class TsumTsumGame {
         console.log('イベントリスナー設定完了');
         
         // ゲームを開始
-        console.log('ゲームループを開始します');
+        console.log('🔧 ゲームループを開始します [デバッグ版]');
         this.startTimer();
         this.gameLoop();
     }
@@ -367,6 +367,9 @@ class TsumTsumGame {
         this.tsumsClearedPositions = [...this.connectedTsums];
         this.fallingProcessed = false; // 落下処理フラグをリセット
         
+        console.log('🔧 removeTsums: 消去位置を記録:', this.tsumsClearedPositions);
+        console.log('🔧 removeTsums: アニメーション開始前のanimatingTsums:', this.animatingTsums.length);
+        
         // アニメーション開始
         this.connectedTsums.forEach(({ row, col }) => {
             const tsum = this.grid[row][col];
@@ -377,7 +380,8 @@ class TsumTsumGame {
             this.animatingTsums.push({ row, col, startTime: Date.now() });
         });
         
-        console.log(`${this.connectedTsums.length}個のツムのアニメーションを開始`);
+        console.log(`🔧 ${this.connectedTsums.length}個のツムのアニメーションを開始`);
+        console.log('🔧 removeTsums: アニメーション開始後のanimatingTsums:', this.animatingTsums.length);
     }
     
     // チェーン長に基づく得点計算
@@ -592,37 +596,48 @@ class TsumTsumGame {
         requestAnimationFrame(() => this.gameLoop());
     }
     
-    // アニメーション更新
+        // アニメーション更新
     updateAnimations() {
         const currentTime = Date.now();
         
+        // 完了したアニメーションをカウント
+        let completedCount = 0;
+        const remainingAnimations = [];
+        
         // アニメーション中のツムを更新
-        this.animatingTsums = this.animatingTsums.filter(({ row, col, startTime }) => {
+        this.animatingTsums.forEach(({ row, col, startTime }) => {
             const elapsed = currentTime - startTime;
             const progress = elapsed / this.animationDuration;
             
             if (progress >= 1.0) {
-                // アニメーション完了：落下システム開始
+                // アニメーション完了
                 const tsum = this.grid[row][col];
                 tsum.opacity = 1.0;
                 tsum.isAnimating = false;
+                completedCount++;
                 
-                // 落下処理を実行（すべてのアニメーション完了時に1回だけ）
-                if (this.animatingTsums.length === 1 && !this.fallingProcessed) {
-                    this.fallingProcessed = true;
-                    setTimeout(() => {
-                        this.processFalling();
-                    }, 50);
-                }
-                
-                return false; // 配列から削除
+                console.log(`🔧 アニメーション完了: (${row}, ${col})`);
             } else {
                 // アニメーション進行中：透明度を更新
                 this.grid[row][col].opacity = 1.0 - progress;
-                return true; // 配列に保持
-                        }
-         });
-     }
+                remainingAnimations.push({ row, col, startTime });
+            }
+        });
+        
+        // 配列を更新
+        this.animatingTsums = remainingAnimations;
+        
+        console.log(`🔧 完了: ${completedCount}個, 残り: ${this.animatingTsums.length}個`);
+        
+        // すべてのアニメーションが完了したら落下処理
+        if (completedCount > 0 && this.animatingTsums.length === 0 && !this.fallingProcessed) {
+            this.fallingProcessed = true;
+            console.log('🔧 すべてのアニメーション完了！落下処理を開始します！');
+            setTimeout(() => {
+                this.processFalling();
+            }, 50);
+        }
+    }
      
      // 手詰まり検出：消せるツムがあるかチェック
      checkForPossibleMoves() {
