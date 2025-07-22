@@ -16,6 +16,8 @@ class TsumTsumGame {
         this.padding = 30; // 外側の余白
         this.score = 0;
         this.timeLeft = 60;
+        this.gameRunning = true;
+        this.timerInterval = null;
         
         // ドラッグ状態の管理
         this.isDragging = false;
@@ -42,6 +44,7 @@ class TsumTsumGame {
         
         // ゲームを開始
         console.log('ゲームループを開始します');
+        this.startTimer();
         this.gameLoop();
     }
     
@@ -196,6 +199,11 @@ class TsumTsumGame {
     
     // ドラッグ開始
     startDrag(row, col) {
+        // ゲームが終了している場合は何もしない
+        if (!this.gameRunning) {
+            return;
+        }
+        
         this.isDragging = true;
         this.connectedTsums = [{ row, col }];
         this.clearAllSelections();
@@ -205,6 +213,11 @@ class TsumTsumGame {
     
     // チェーンにツムを追加
     addToChain(row, col) {
+        // ゲームが終了している場合は何もしない
+        if (!this.gameRunning) {
+            return;
+        }
+        
         const lastTsum = this.connectedTsums[this.connectedTsums.length - 1];
         
         // 既に選択されているか確認
@@ -291,6 +304,72 @@ class TsumTsumGame {
         console.log(`+${points}点！ 総スコア: ${this.score}`);
     }
     
+    // タイマー開始
+    startTimer() {
+        this.timerInterval = setInterval(() => {
+            this.timeLeft--;
+            document.getElementById('time').textContent = this.timeLeft;
+            console.log(`残り時間: ${this.timeLeft}秒`);
+            
+            // 時間切れチェック
+            if (this.timeLeft <= 0) {
+                this.endGame();
+            }
+        }, 1000);
+        console.log('タイマーを開始しました');
+    }
+    
+    // ゲーム終了
+    endGame() {
+        this.gameRunning = false;
+        
+        // タイマーを停止
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+        
+        // 選択状態をクリア
+        this.clearAllSelections();
+        this.connectedTsums = [];
+        this.isDragging = false;
+        
+        // リスタートボタンを表示
+        document.getElementById('restartBtn').style.display = 'block';
+        
+        // 終了メッセージを表示
+        setTimeout(() => {
+            alert(`ゲーム終了！\n最終スコア: ${this.score}点\n\n「もう一度プレイ」ボタンでリスタートできます。`);
+        }, 100);
+        
+        console.log(`ゲーム終了 - 最終スコア: ${this.score}点`);
+    }
+    
+    // ゲームリスタート
+    restart() {
+        console.log('ゲームをリスタートします');
+        
+        // ゲーム状態をリセット
+        this.score = 0;
+        this.timeLeft = 60;
+        this.gameRunning = true;
+        this.isDragging = false;
+        this.connectedTsums = [];
+        
+        // UI更新
+        document.getElementById('score').textContent = this.score;
+        document.getElementById('time').textContent = this.timeLeft;
+        document.getElementById('restartBtn').style.display = 'none';
+        
+        // グリッドを再初期化
+        this.initializeGrid();
+        
+        // タイマー再開
+        this.startTimer();
+        
+        console.log('リスタート完了');
+    }
+    
     // ゲームループ
     gameLoop() {
         this.draw();
@@ -298,13 +377,23 @@ class TsumTsumGame {
     }
 }
 
+// グローバル変数でゲームインスタンスを保持
+let gameInstance = null;
+
 // ページが読み込まれたらゲームを開始
 window.addEventListener('load', () => {
     console.log('ページが読み込まれました！');
     try {
-        const game = new TsumTsumGame();
+        gameInstance = new TsumTsumGame();
         console.log('ゲームが正常に開始されました！');
     } catch (error) {
         console.error('ゲーム開始でエラーが発生しました:', error);
     }
-}); 
+});
+
+// グローバル関数：リスタート用
+function restartGame() {
+    if (gameInstance) {
+        gameInstance.restart();
+    }
+} 
